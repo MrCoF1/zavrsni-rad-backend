@@ -1,0 +1,16 @@
+{
+  "name": "trening-app-backend",
+  "version": "1.0.0",
+  "description": "Backend za aplikaciju za planiranje treninga",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "db:init": "node db/init.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.12.0",
+    "dotenv": "^16.4.5",
+    "cors": "^2.8.5"
+  }
+}
