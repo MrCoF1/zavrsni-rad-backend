@@ -188,7 +188,7 @@ async function azurirajProgresiju(korisnikId, vjezbaId, ishod) {
       if (format === 'dumbbell') {
         increment /= 2;
       }
-      trenutnaTezina = zaokruziNaParan(Number(trenutnaTezina) + increment);
+      trenutnaTezina = Math.round((Number(trenutnaTezina) + increment) * 100) / 100;
       uzastopniPogodci = 0;
     }
   }

@@ -15,9 +15,10 @@ DROP TABLE IF EXISTS korisnici CASCADE;
 -- 1. Korisnici
 CREATE TABLE korisnici (
     id SERIAL PRIMARY KEY,
-    google_id VARCHAR(255) NOT NULL UNIQUE,
+    google_id VARCHAR(255) UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
     ime VARCHAR(255) NOT NULL,
+    lozinka_hash VARCHAR(255),
     datum_registracije TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
@@ -73,7 +74,8 @@ CREATE TABLE treninzi (
     tip_treninga_id INTEGER NOT NULL REFERENCES tipovi_treninga(id),
     datum DATE NOT NULL,
     status VARCHAR(20) NOT NULL CHECK (status IN ('planiran', 'odradjen')),
-    redni_indeks_u_splitu INTEGER
+    redni_indeks_u_splitu INTEGER,
+    prioritetna_skupina VARCHAR(50)
 );
 
 -- 9. Stavke treninga

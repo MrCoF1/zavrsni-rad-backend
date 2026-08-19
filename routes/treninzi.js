@@ -14,7 +14,7 @@ router.get('/:id', async (req, res) => {
 
   try {
     const treningRes = await pool.query(
-      `SELECT t.id, t.korisnik_id, t.tip_treninga_id, tt.naziv AS tip_treninga, t.datum, t.status
+      `SELECT t.id, t.korisnik_id, t.tip_treninga_id, tt.naziv AS tip_treninga, TO_CHAR(t.datum, 'YYYY-MM-DD') AS datum, t.status
        FROM treninzi t
        JOIN tipovi_treninga tt ON tt.id = t.tip_treninga_id
        WHERE t.id = $1`,
@@ -66,7 +66,7 @@ router.post('/:id/zavrsi', async (req, res) => {
       `UPDATE treninzi
        SET status = 'odradjen'
        WHERE id = $1
-       RETURNING id, korisnik_id, tip_treninga_id, datum, status, redni_indeks_u_splitu`,
+       RETURNING id, korisnik_id, tip_treninga_id, TO_CHAR(datum, 'YYYY-MM-DD') AS datum, status, redni_indeks_u_splitu`,
       [id]
     );
     if (zavrseniRes.rows.length === 0) {
@@ -78,8 +78,8 @@ router.post('/:id/zavrsi', async (req, res) => {
       return res.json({ zavrseni_trening: zavrseniTrening, sljedeci_trening: null });
     }
 
-    const sljedeciDatum = new Date(zavrseniTrening.datum);
-    sljedeciDatum.setDate(sljedeciDatum.getDate() + 7);
+    const [godinaZ, mjesecZ, danZ] = zavrseniTrening.datum.split('-').map(Number);
+    const sljedeciDatum = new Date(godinaZ, mjesecZ - 1, danZ + 7);
 
     const danas = new Date();
     danas.setHours(0, 0, 0, 0);

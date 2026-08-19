@@ -6,7 +6,7 @@ module.exports = {
         { misicna_skupina: 'ramena', broj: 1 },
         { misicna_skupina: 'quads', broj: 1 },
         { misicna_skupina: 'hamstring', broj: 1 }
-      ], kardio_za_ciljeve: ['mrsavljenje'], prioritet_slot: false },
+      ], kardio_za_ciljeve: ['mrsavljenje'], prioritet_slot: true },
     { tip_treninga: 'Full Body', sastav: [
         { misicna_skupina: 'prsa', broj: 1 },
         { misicna_skupina: 'leđa', broj: 2 },
@@ -25,7 +25,7 @@ module.exports = {
         { misicna_skupina: 'quads', broj: 2 },
         { misicna_skupina: 'hamstring', broj: 2 },
         { misicna_skupina: 'calves', broj: 1 }
-      ], kardio_za_ciljeve: [], prioritet_slot: false },
+      ], kardio_za_ciljeve: [], prioritet_slot: true },
     { tip_treninga: 'Full Body', sastav: [
         { misicna_skupina: 'prsa', broj: 1 },
         { misicna_skupina: 'leđa', broj: 1 },
@@ -47,7 +47,7 @@ module.exports = {
         { misicna_skupina: 'hamstring', broj: 2 },
         { misicna_skupina: 'calves', broj: 1 },
         { misicna_skupina: 'triceps', broj: 1 }
-      ], kardio_za_ciljeve: [], prioritet_slot: false },
+      ], kardio_za_ciljeve: [], prioritet_slot: true },
     { tip_treninga: 'Upper', redni_broj: 2, sastav: [
         { misicna_skupina: 'prsa', broj: 2 },
         { misicna_skupina: 'leđa', broj: 2 },
@@ -59,7 +59,7 @@ module.exports = {
         { misicna_skupina: 'hamstring', broj: 2 },
         { misicna_skupina: 'calves', broj: 1 },
         { misicna_skupina: 'triceps', broj: 1 }
-      ], kardio_za_ciljeve: ['mrsavljenje', 'clean_bulk'], prioritet_slot: false }
+      ], kardio_za_ciljeve: ['mrsavljenje', 'clean_bulk'], prioritet_slot: true }
   ],
   5: [
     { tip_treninga: 'Push', sastav: [
@@ -71,7 +71,7 @@ module.exports = {
         { misicna_skupina: 'leđa', broj: 3 },
         { misicna_skupina: 'biceps', broj: 2 },
         { misicna_skupina: 'ramena', broj: 1, iskljucivo_vjezba: 'Rear Delts' }
-      ], kardio_za_ciljeve: [], prioritet_slot: false },
+      ], kardio_za_ciljeve: [], prioritet_slot: true },
     // TODO: clean_bulk kardio je ovdje stavljen na Legs (najbliži "full body" ekvivalent u ovom splitu).
     // Provjeriti s Filipom je li Lower prikladniji slot za ovaj kardio umjesto Legs prije nego se ovo koristi u logici.
     { tip_treninga: 'Legs', sastav: [
@@ -84,7 +84,7 @@ module.exports = {
         { misicna_skupina: 'leđa', broj: 2 },
         { misicna_skupina: 'ramena', broj: 1 },
         { misicna_skupina: 'biceps', broj: 1 }
-      ], kardio_za_ciljeve: [], prioritet_slot: false },
+      ], kardio_za_ciljeve: [], prioritet_slot: true },
     { tip_treninga: 'Lower', sastav: [
         { misicna_skupina: 'quads', broj: 2 },
         { misicna_skupina: 'hamstring', broj: 2 },

@@ -24,7 +24,37 @@ function izaberiNasumicno(kandidati, broj, odabraniIdovi) {
   return odabrani;
 }
 
-async function generirajTrening(korisnikId, redniIndeksUSplitu, offsetDana) {
+function odaberiVjezbeRotacijom(kandidati, brojTrazenih, brojGeneracija, brojDanaTjedno) {
+  const sortirani = [...kandidati].sort((a, b) => a.id - b.id);
+  if (sortirani.length === 0 || brojTrazenih <= 0) {
+    return [];
+  }
+
+  const odabrani = [sortirani[0]];
+  const ostali = sortirani.slice(1);
+
+  if (ostali.length === 0) {
+    return odabrani;
+  }
+
+  const rotacijaIndex = (brojDanaTjedno === 2 || brojDanaTjedno === 3)
+    ? Math.floor(brojGeneracija / 2)
+    : brojGeneracija;
+
+  const iskoristeniIndeksi = new Set();
+  for (let p = 0; p < brojTrazenih - 1 && iskoristeniIndeksi.size < ostali.length; p++) {
+    const index = (rotacijaIndex + p) % ostali.length;
+    if (iskoristeniIndeksi.has(index)) continue;
+    iskoristeniIndeksi.add(index);
+    odabrani.push(ostali[index]);
+  }
+
+  return odabrani;
+}
+
+async function generirajTrening(korisnikId, redniIndeksUSplitu, offsetDana, client, prioritetnaSkupinaOverride) {
+  const koristiEksplicitniPrioritet = prioritetnaSkupinaOverride !== undefined;
+
   const profilRes = await pool.query(
     'SELECT cilj, broj_dana_tjedno, tezina_kg FROM korisnicki_profili WHERE korisnik_id = $1',
     [korisnikId]
@@ -34,15 +64,18 @@ async function generirajTrening(korisnikId, redniIndeksUSplitu, offsetDana) {
   }
   const { cilj, broj_dana_tjedno: brojDanaTjedno } = profilRes.rows[0];
 
-  const prioritetiRes = await pool.query(
-    `SELECT kp.misicna_skupina_id, ms.naziv
-     FROM korisnik_prioriteti kp
-     JOIN misicne_skupine ms ON ms.id = kp.misicna_skupina_id
-     WHERE kp.korisnik_id = $1
-     ORDER BY kp.misicna_skupina_id`,
-    [korisnikId]
-  );
-  const prioriteti = prioritetiRes.rows;
+  let prioriteti = [];
+  if (!koristiEksplicitniPrioritet) {
+    const prioritetiRes = await pool.query(
+      `SELECT kp.misicna_skupina_id, ms.naziv
+       FROM korisnik_prioriteti kp
+       JOIN misicne_skupine ms ON ms.id = kp.misicna_skupina_id
+       WHERE kp.korisnik_id = $1
+       ORDER BY kp.misicna_skupina_id`,
+      [korisnikId]
+    );
+    prioriteti = prioritetiRes.rows;
+  }
 
   const listaPredlozaka = splitPredlosci[brojDanaTjedno];
   if (!listaPredlozaka) {
@@ -63,6 +96,12 @@ async function generirajTrening(korisnikId, redniIndeksUSplitu, offsetDana) {
   }
   const tipTreningaId = tipTreningaRes.rows[0].id;
 
+  const brojGeneracijaRes = await pool.query(
+    'SELECT COUNT(*) FROM treninzi WHERE korisnik_id = $1 AND tip_treninga_id = $2',
+    [korisnikId, tipTreningaId]
+  );
+  const brojGeneracija = Number(brojGeneracijaRes.rows[0].count);
+
   const odabraneVjezbe = [];
   const odabraniIdovi = new Set();
 
@@ -81,12 +120,8 @@ async function generirajTrening(korisnikId, redniIndeksUSplitu, offsetDana) {
     }
 
     const kandidati = await dohvatiKandidate(stavka.misicna_skupina, tipTreningaId);
-    const odabrani = izaberiNasumicno(kandidati, stavka.broj, odabraniIdovi);
-    if (odabrani.length < stavka.broj) {
-      throw new Error(
-        `Nedovoljno vježbi za mišićnu skupinu "${stavka.misicna_skupina}" i tip treninga "${tipTreningaNaziv}" (traženo ${stavka.broj}, dostupno ${odabrani.length}).`
-      );
-    }
+    const dostupniKandidati = kandidati.filter((k) => !odabraniIdovi.has(k.id));
+    const odabrani = odaberiVjezbeRotacijom(dostupniKandidati, stavka.broj, brojGeneracija, brojDanaTjedno);
     for (const v of odabrani) {
       odabraneVjezbe.push(v);
       odabraniIdovi.add(v.id);
@@ -102,46 +137,55 @@ async function generirajTrening(korisnikId, redniIndeksUSplitu, offsetDana) {
     }
   }
 
-  if (predlozak.prioritet_slot && prioriteti.length > 0) {
+  let prioritetnaSkupinaNaziv = null;
+  let nazivZaPrioritet = null;
+
+  if (koristiEksplicitniPrioritet) {
+    if (prioritetnaSkupinaOverride && predlozak.prioritet_slot) {
+      nazivZaPrioritet = prioritetnaSkupinaOverride;
+    }
+  } else if (predlozak.prioritet_slot && prioriteti.length > 0) {
     let odabraniPrioritet;
     if (prioriteti.length === 1) {
       odabraniPrioritet = prioriteti[0];
     } else {
-      const brojPostojecihRes = await pool.query(
-        'SELECT COUNT(*) FROM treninzi WHERE korisnik_id = $1 AND tip_treninga_id = $2',
-        [korisnikId, tipTreningaId]
-      );
-      const brojPostojecih = Number(brojPostojecihRes.rows[0].count);
       odabraniPrioritet = predlozak.prioritet_uvijek_svaki_tjedan
         ? prioriteti[0]
-        : prioriteti[brojPostojecih % 2];
+        : prioriteti[brojGeneracija % 2];
     }
+    nazivZaPrioritet = odabraniPrioritet.naziv;
+  }
 
+  if (nazivZaPrioritet) {
     const imaMjesta = odabraneVjezbe.length < 9;
 
     if (imaMjesta) {
-      const kandidati = await dohvatiKandidate(odabraniPrioritet.naziv, tipTreningaId);
+      const kandidati = await dohvatiKandidate(nazivZaPrioritet, tipTreningaId);
       const odabrani = izaberiNasumicno(kandidati, 1, odabraniIdovi);
       if (odabrani.length > 0) {
         odabraneVjezbe.push(odabrani[0]);
         odabraniIdovi.add(odabrani[0].id);
+        prioritetnaSkupinaNaziv = nazivZaPrioritet;
       }
     }
   }
 
-  const client = await pool.connect();
+  const vlastitiClient = !client;
+  const dbClient = client || await pool.connect();
   try {
-    await client.query('BEGIN');
+    if (vlastitiClient) {
+      await dbClient.query('BEGIN');
+    }
 
     const datum = new Date();
     datum.setDate(datum.getDate() + offsetDana);
     const datumStr = datum.toISOString().slice(0, 10);
 
-    const treningRes = await client.query(
-      `INSERT INTO treninzi (korisnik_id, tip_treninga_id, datum, status, redni_indeks_u_splitu)
-       VALUES ($1, $2, $3, 'planiran', $4)
-       RETURNING id, datum, status, redni_indeks_u_splitu`,
-      [korisnikId, tipTreningaId, datumStr, redniIndeksUSplitu]
+    const treningRes = await dbClient.query(
+      `INSERT INTO treninzi (korisnik_id, tip_treninga_id, datum, status, redni_indeks_u_splitu, prioritetna_skupina)
+       VALUES ($1, $2, $3, 'planiran', $4, $5)
+       RETURNING id, TO_CHAR(datum, 'YYYY-MM-DD') AS datum, status, redni_indeks_u_splitu, prioritetna_skupina`,
+      [korisnikId, tipTreningaId, datumStr, redniIndeksUSplitu, prioritetnaSkupinaNaziv]
     );
     const trening = treningRes.rows[0];
 
@@ -150,7 +194,7 @@ async function generirajTrening(korisnikId, redniIndeksUSplitu, offsetDana) {
     for (const vjezba of odabraneVjezbe) {
       const plan = await dohvatiPlanZaVjezbu(korisnikId, vjezba.id);
 
-      const stavkaRes = await client.query(
+      const stavkaRes = await dbClient.query(
         `INSERT INTO stavke_treninga (trening_id, vjezba_id, redni_broj)
          VALUES ($1, $2, $3)
          RETURNING id`,
@@ -160,7 +204,7 @@ async function generirajTrening(korisnikId, redniIndeksUSplitu, offsetDana) {
 
       const serije = [];
       for (let i = 1; i <= plan.broj_serija; i++) {
-        const serijaRes = await client.query(
+        const serijaRes = await dbClient.query(
           `INSERT INTO serije (stavka_treninga_id, redni_broj, planirana_tezina, planirana_ponavljanja)
            VALUES ($1, $2, $3, $4)
            RETURNING id, redni_broj, planirana_tezina, planirana_ponavljanja`,
@@ -180,7 +224,9 @@ async function generirajTrening(korisnikId, redniIndeksUSplitu, offsetDana) {
       redniBrojStavke++;
     }
 
-    await client.query('COMMIT');
+    if (vlastitiClient) {
+      await dbClient.query('COMMIT');
+    }
 
     return {
       id: trening.id,
@@ -190,14 +236,19 @@ async function generirajTrening(korisnikId, redniIndeksUSplitu, offsetDana) {
       datum: trening.datum,
       status: trening.status,
       redni_indeks_u_splitu: trening.redni_indeks_u_splitu,
+      prioritetna_skupina: trening.prioritetna_skupina,
       vjezbe: stavke
     };
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (vlastitiClient) {
+      await dbClient.query('ROLLBACK');
+    }
     throw err;
   } finally {
-    client.release();
+    if (vlastitiClient) {
+      dbClient.release();
+    }
   }
 }
 
-module.exports = { generirajTrening };
+module.exports = { generirajTrening, dohvatiKandidate };
