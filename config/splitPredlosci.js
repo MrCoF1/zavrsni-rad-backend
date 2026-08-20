@@ -72,8 +72,6 @@ module.exports = {
         { misicna_skupina: 'biceps', broj: 2 },
         { misicna_skupina: 'ramena', broj: 1, iskljucivo_vjezba: 'Rear Delts' }
       ], kardio_za_ciljeve: [], prioritet_slot: true },
-    // TODO: clean_bulk kardio je ovdje stavljen na Legs (najbliži "full body" ekvivalent u ovom splitu).
-    // Provjeriti s Filipom je li Lower prikladniji slot za ovaj kardio umjesto Legs prije nego se ovo koristi u logici.
     { tip_treninga: 'Legs', sastav: [
         { misicna_skupina: 'quads', broj: 2 },
         { misicna_skupina: 'hamstring', broj: 2 },
